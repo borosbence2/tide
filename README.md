@@ -27,18 +27,6 @@ npm run build    # type-check + production build into dist/
 npm run preview  # serve the production build (test the PWA / offline)
 ```
 
-## Publish (GitHub Pages)
-
-A workflow at `.github/workflows/deploy.yml` builds and deploys on every push to
-`main`/`master`. It auto-sets the base path to `/<repo>/` for project sites.
-
-One-time setup: in the GitHub repo, **Settings → Pages → Build and deployment →
-Source: GitHub Actions**. The app will be live at
-`https://<user>.github.io/<repo>/` over HTTPS (required for the PWA/offline
-service worker to work — including on iOS).
-
-For a custom domain or a `<user>.github.io` root site, the base stays `/`.
-
 ## A note
 
 Tide is a supportive companion, not a substitute for care. If panic attacks are
