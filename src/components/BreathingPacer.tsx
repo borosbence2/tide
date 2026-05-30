@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from "react";
-import { PHASE_LABEL, type BreathPattern, type Phase } from "../breathing/pattern";
+import {
+  PHASE_LABEL,
+  easeInOutSine,
+  type BreathPattern,
+  type Phase,
+} from "../breathing/pattern";
 import { useBreathCycle, type BreathFrame } from "../breathing/useBreathCycle";
 
 const prefersReducedMotion =
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-// How long to rest the orb before breathing resumes, when re-entering from an
-// overlay. A gentle on-ramp instead of dropping back in mid-breath.
-const LEAD_IN_MS = 2000;
+// Lead-in when re-entering from an overlay: ease the orb down to rest, hold a
+// calm beat ("Breathe with me"), then restart on a fresh inhale.
+const SETTLE_MS = 900; // smooth shrink to the resting orb (no jump)
+const HOLD_MS = 3000; // the pause itself
 
 // Orb color tracks the breath: calm slate-blue when exhaled → soft teal when full.
 const LOW: [number, number, number] = [96, 132, 178];
@@ -53,6 +59,9 @@ export default function BreathingPacer({
   const [breathReset, setBreathReset] = useState(0);
   const lastPhaseRef = useRef<Phase>("inhale");
   const lastSecRef = useRef(0);
+  // The scale currently on screen, so the lead-in can ease from wherever the
+  // orb actually is (no jump), even if re-triggered mid-transition.
+  const currentScaleRef = useRef(0);
 
   // Canvas setup + responsive sizing.
   useEffect(() => {
@@ -81,6 +90,7 @@ export default function BreathingPacer({
     const ctx = ctxRef.current;
     const { w, h, dpr } = sizeRef.current;
     if (!ctx || w === 0) return;
+    currentScaleRef.current = scale;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
@@ -145,7 +155,8 @@ export default function BreathingPacer({
     }
   };
 
-  // Re-entering from an overlay: pause, rest the orb, then restart fresh.
+  // Re-entering from an overlay: smoothly ease the orb down to rest, hold a
+  // calm beat, then restart on a fresh inhale.
   const firstRunRef = useRef(true);
   useEffect(() => {
     if (firstRunRef.current) {
@@ -153,19 +164,29 @@ export default function BreathingPacer({
       return;
     }
     setLeadIn(true);
-    const t = window.setTimeout(() => {
-      setBreathReset((n) => n + 1); // rewind cycle to a full inhale
-      setLeadIn(false);
-    }, LEAD_IN_MS);
-    return () => clearTimeout(t);
-  }, [restartKey]);
-
-  // Hold the resting orb still during the lead-in (runs after the loop stops).
-  useEffect(() => {
-    if (leadIn) renderOrb(0, 0, false);
-    // renderOrb only reads refs; safe to omit from deps.
+    const startScale = currentScaleRef.current;
+    const t0 = performance.now();
+    let raf = 0;
+    const animate = (now: number) => {
+      const t = now - t0;
+      if (t < SETTLE_MS) {
+        // Ease from wherever the orb is down to the resting size — no jump.
+        const k = easeInOutSine(t / SETTLE_MS);
+        renderOrb(startScale * (1 - k), 0, false);
+        raf = requestAnimationFrame(animate);
+      } else if (t < SETTLE_MS + HOLD_MS) {
+        renderOrb(0, 0, false); // hold at rest
+        raf = requestAnimationFrame(animate);
+      } else {
+        setBreathReset((n) => n + 1); // rewind cycle to a full inhale
+        setLeadIn(false);
+      }
+    };
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+    // renderOrb reads only refs; safe to omit from deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadIn]);
+  }, [restartKey]);
 
   useBreathCycle(pattern, running && !leadIn, draw, breathReset);
 
