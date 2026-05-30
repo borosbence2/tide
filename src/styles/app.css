@@ -56,17 +56,21 @@
 .actionbar__row {
   display: flex;
   gap: 0.75rem;
-  justify-content: center;
-  flex-wrap: wrap;
+  width: 100%;
+  max-width: 26rem;
 }
 .actionbar__btn {
+  flex: 1 1 0; /* each takes half the row — even widths, side by side */
+  min-width: 0; /* allow shrink so the label wraps inside, not onto a new row */
   min-height: var(--tap-min);
-  padding: 0.85rem 1.4rem;
+  padding: 0.85rem 1rem;
   border-radius: 999px;
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
   font-size: 1.05rem;
+  line-height: 1.2;
+  text-align: center;
   backdrop-filter: blur(8px);
   transition: background 0.2s ease, transform 0.1s ease;
 }
@@ -208,6 +212,8 @@
   position: static;
 }
 .settings__scroll {
+  flex: 1;
+  min-height: 0;
   width: 100%;
   max-width: 32rem;
   margin: 0 auto;
