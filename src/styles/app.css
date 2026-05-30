@@ -105,7 +105,7 @@
 }
 .overlay__close {
   position: absolute;
-  top: max(1rem, env(safe-area-inset-top));
+  top: max(2.75rem, calc(env(safe-area-inset-top) + 0.5rem));
   right: max(1rem, env(safe-area-inset-right));
   width: 2.75rem;
   height: 2.75rem;
@@ -194,7 +194,9 @@
 .settings {
   justify-content: flex-start;
   background: rgba(14, 23, 38, 0.94);
-  padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem 1.25rem;
+  /* Clear the status bar / Dynamic Island even when the safe-area inset is
+     reported as 0 (as it is in a normal Safari tab). */
+  padding: max(3.25rem, calc(env(safe-area-inset-top) + 0.5rem)) 1.25rem 1.25rem;
 }
 .settings__head {
   display: flex;
