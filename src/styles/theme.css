@@ -18,7 +18,7 @@
 
   --accent: #8fd0e0;
 
-  --tap-min: 56px;
+  --tap-min: 3.5rem;
   --ease-breath: cubic-bezier(0.37, 0, 0.63, 1); /* easeInOutSine-like */
 
   color-scheme: dark;
@@ -37,12 +37,20 @@ body,
   width: 100%;
 }
 
+/* Fluid base size so touch targets and type scale with the screen. Phones up to
+   ~390pt wide (iPhone 12 and smaller) stay pinned at 16px — unchanged — while
+   larger screens (e.g. iPhone Air, or "More Space" display zoom) scale up. All
+   sizing is in rem, so the whole UI grows together. */
+html {
+  font-size: clamp(16px, 8vw - 16px, 22px);
+}
+
 body {
   background: var(--bg);
   color: var(--text);
   font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI",
     Roboto, sans-serif;
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
