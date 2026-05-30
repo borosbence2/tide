@@ -13,7 +13,7 @@ const prefersReducedMotion =
 
 // Lead-in when re-entering from an overlay: ease the orb down to rest, hold a
 // calm beat ("Breathe with me"), then restart on a fresh inhale.
-const SETTLE_MS = 900; // smooth shrink to the resting orb (no jump)
+const SETTLE_MS = 1400; // smooth shrink to the resting orb (no jump)
 const HOLD_MS = 3000; // the pause itself
 
 // Orb color tracks the breath: calm slate-blue when exhaled → soft teal when full.
