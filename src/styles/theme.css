@@ -1,0 +1,85 @@
+:root {
+  /* Calm, low-saturation dark palette */
+  --bg: #0e1726;
+  --bg-soft: #142235;
+  --surface: rgba(255, 255, 255, 0.05);
+  --surface-strong: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
+
+  --text: #e8eef5;
+  --text-dim: #9fb0c3;
+  --text-faint: #64758a;
+
+  /* Breathing-orb colors, shifted gently per phase */
+  --inhale: #7fd4c9; /* soft teal */
+  --hold: #9db8e0; /* muted periwinkle */
+  --exhale: #6f9fd0; /* calm blue */
+  --rest: #5a6b85; /* slate */
+
+  --accent: #8fd0e0;
+
+  --tap-min: 56px;
+  --ease-breath: cubic-bezier(0.37, 0, 0.63, 1); /* easeInOutSine-like */
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  font-size: 18px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  /* never bounce / select / highlight during an attack */
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+#root {
+  /* respect the notch / home indicator */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Soft, calm focus ring for keyboard users only */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
