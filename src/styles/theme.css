@@ -42,7 +42,7 @@ body,
    larger screens (e.g. iPhone Air, or "More Space" display zoom) scale up. All
    sizing is in rem, so the whole UI grows together. */
 html {
-  font-size: clamp(16px, 8vw - 16px, 22px);
+  font-size: clamp(16px, 10vw - 23px, 24px);
 }
 
 body {
