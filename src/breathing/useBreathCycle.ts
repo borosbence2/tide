@@ -22,12 +22,19 @@ export function useBreathCycle(
   pattern: BreathPattern,
   running: boolean,
   onFrame: (frame: BreathFrame) => void,
+  resetKey: number = 0,
 ) {
   const onFrameRef = useRef(onFrame);
   onFrameRef.current = onFrame;
 
   const elapsedRef = useRef(0); // accumulated breathing time, seconds
   const lastTsRef = useRef<number | null>(null);
+
+  // Bumping resetKey rewinds the cycle so it starts fresh on a full inhale.
+  useEffect(() => {
+    elapsedRef.current = 0;
+    lastTsRef.current = null;
+  }, [resetKey]);
 
   useEffect(() => {
     if (!running) {

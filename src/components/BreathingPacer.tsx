@@ -6,6 +6,10 @@ const prefersReducedMotion =
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+// How long to rest the orb before breathing resumes, when re-entering from an
+// overlay. A gentle on-ramp instead of dropping back in mid-breath.
+const LEAD_IN_MS = 2000;
+
 // Orb color tracks the breath: calm slate-blue when exhaled → soft teal when full.
 const LOW: [number, number, number] = [96, 132, 178];
 const HIGH: [number, number, number] = [143, 212, 201];
@@ -29,11 +33,14 @@ export default function BreathingPacer({
   pattern,
   running = true,
   dimmed = false,
+  restartKey = 0,
   onPhaseChange,
 }: {
   pattern: BreathPattern;
   running?: boolean;
   dimmed?: boolean;
+  /** Bump this to replay the calm lead-in and restart on a fresh inhale. */
+  restartKey?: number;
   onPhaseChange?: (phase: Phase) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -42,6 +49,8 @@ export default function BreathingPacer({
 
   const [phase, setPhase] = useState<Phase>("inhale");
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [leadIn, setLeadIn] = useState(false);
+  const [breathReset, setBreathReset] = useState(0);
   const lastPhaseRef = useRef<Phase>("inhale");
   const lastSecRef = useRef(0);
 
@@ -67,7 +76,8 @@ export default function BreathingPacer({
     return () => ro.disconnect();
   }, []);
 
-  const draw = (frame: BreathFrame) => {
+  // Pure canvas render of the orb at a given scale (0 exhaled .. 1 inhaled).
+  const renderOrb = (scale: number, elapsed: number, withRings: boolean) => {
     const ctx = ctxRef.current;
     const { w, h, dpr } = sizeRef.current;
     if (!ctx || w === 0) return;
@@ -80,32 +90,29 @@ export default function BreathingPacer({
     const minDim = Math.min(w, h);
     const baseR = minDim * 0.15;
     const maxR = minDim * 0.34;
-    const r = baseR + (maxR - baseR) * frame.scale;
+    const r = baseR + (maxR - baseR) * scale;
     const baseAlpha = dimmed ? 0.4 : 1;
 
-    // Expanding halo rings — gentle outward motion (skipped when reduced-motion).
-    if (!prefersReducedMotion) {
+    if (withRings && !prefersReducedMotion) {
       for (let i = 0; i < 3; i++) {
-        const p = ((frame.elapsed * 0.16 + i / 3) % 1 + 1) % 1;
+        const p = (((elapsed * 0.16 + i / 3) % 1) + 1) % 1;
         const ringR = r + minDim * 0.16 * p;
         const a = (1 - p) * 0.18 * baseAlpha;
         ctx.beginPath();
         ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-        ctx.strokeStyle = orbColor(frame.scale, a);
+        ctx.strokeStyle = orbColor(scale, a);
         ctx.lineWidth = 1.5;
         ctx.stroke();
       }
     }
 
-    // Outer glow.
     const glow = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r * 1.8);
-    glow.addColorStop(0, orbColor(frame.scale, 0.55 * baseAlpha));
-    glow.addColorStop(0.5, orbColor(frame.scale, 0.28 * baseAlpha));
-    glow.addColorStop(1, orbColor(frame.scale, 0));
+    glow.addColorStop(0, orbColor(scale, 0.55 * baseAlpha));
+    glow.addColorStop(0.5, orbColor(scale, 0.28 * baseAlpha));
+    glow.addColorStop(1, orbColor(scale, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, w, h);
 
-    // Core orb.
     const core = ctx.createRadialGradient(
       cx - r * 0.25,
       cy - r * 0.3,
@@ -115,14 +122,18 @@ export default function BreathingPacer({
       r,
     );
     core.addColorStop(0, `rgba(220, 245, 240, ${0.95 * baseAlpha})`);
-    core.addColorStop(0.6, orbColor(frame.scale, 0.92 * baseAlpha));
-    core.addColorStop(1, orbColor(frame.scale, 0.5 * baseAlpha));
+    core.addColorStop(0.6, orbColor(scale, 0.92 * baseAlpha));
+    core.addColorStop(1, orbColor(scale, 0.5 * baseAlpha));
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI * 2);
     ctx.fillStyle = core;
     ctx.fill();
+  };
 
-    // Surface phase changes to the DOM label without re-rendering every frame.
+  const draw = (frame: BreathFrame) => {
+    renderOrb(frame.scale, frame.elapsed, true);
+
+    // Surface phase changes to the DOM without re-rendering every frame.
     if (frame.phase !== lastPhaseRef.current) {
       lastPhaseRef.current = frame.phase;
       setPhase(frame.phase);
@@ -134,17 +145,39 @@ export default function BreathingPacer({
     }
   };
 
-  useBreathCycle(pattern, running, draw);
+  // Re-entering from an overlay: pause, rest the orb, then restart fresh.
+  const firstRunRef = useRef(true);
+  useEffect(() => {
+    if (firstRunRef.current) {
+      firstRunRef.current = false; // cold open begins breathing immediately
+      return;
+    }
+    setLeadIn(true);
+    const t = window.setTimeout(() => {
+      setBreathReset((n) => n + 1); // rewind cycle to a full inhale
+      setLeadIn(false);
+    }, LEAD_IN_MS);
+    return () => clearTimeout(t);
+  }, [restartKey]);
+
+  // Hold the resting orb still during the lead-in (runs after the loop stops).
+  useEffect(() => {
+    if (leadIn) renderOrb(0, 0, false);
+    // renderOrb only reads refs; safe to omit from deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadIn]);
+
+  useBreathCycle(pattern, running && !leadIn, draw, breathReset);
 
   return (
     <div className="pacer">
       <canvas ref={canvasRef} className="pacer__canvas" aria-hidden="true" />
       <div className={`pacer__label${dimmed ? " pacer__label--dim" : ""}`}>
         <span className="pacer__cue" aria-live="polite">
-          {PHASE_LABEL[phase]}
+          {leadIn ? "Breathe with me" : PHASE_LABEL[phase]}
         </span>
         <span className="pacer__count" aria-hidden="true">
-          {secondsLeft}
+          {leadIn ? "" : secondsLeft}
         </span>
       </div>
     </div>

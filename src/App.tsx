@@ -16,6 +16,13 @@ export type Mode = "breathing" | "grounding" | "reassurance" | "settings";
 export default function App() {
   // Mode is intentionally NOT persisted — every launch opens calm into breathing.
   const [mode, setMode] = useState<Mode>("breathing");
+  // Bumped when returning from a coping flow, to replay the calm lead-in.
+  const [restartKey, setRestartKey] = useState(0);
+
+  const returnToBreathing = useCallback(() => {
+    setMode("breathing");
+    setRestartKey((k) => k + 1);
+  }, []);
 
   const [patternId, setPatternId] = usePersistedState<string>(
     STORAGE_KEYS.patternId,
@@ -46,12 +53,17 @@ export default function App() {
 
   return (
     <main className="app">
-      <BreathingPacer pattern={pattern} dimmed={dimmed} onPhaseChange={onPhaseChange} />
+      <BreathingPacer
+        pattern={pattern}
+        dimmed={dimmed}
+        restartKey={restartKey}
+        onPhaseChange={onPhaseChange}
+      />
 
       {mode === "breathing" && <ActionBar onGo={setMode} />}
-      {mode === "grounding" && <Grounding onClose={() => setMode("breathing")} />}
+      {mode === "grounding" && <Grounding onClose={returnToBreathing} />}
       {mode === "reassurance" && (
-        <Reassurance messages={messages} onClose={() => setMode("breathing")} />
+        <Reassurance messages={messages} onClose={returnToBreathing} />
       )}
       {mode === "settings" && (
         <Settings
